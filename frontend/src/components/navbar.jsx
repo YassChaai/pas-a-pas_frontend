@@ -1,46 +1,68 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import { Menu, X } from "lucide-react"
+import { Menu, X, ShoppingCart } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { Button } from "@/components/ui/button"
 
 export default function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const { isAuthenticated, logout } = useAuth()
-
-  const toggleMenu = () => setMenuOpen(!menuOpen)
+  const [isOpen, setIsOpen] = useState(false)
+  const { isAuthenticated, logout, user } = useAuth()
 
   return (
-    <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16 items-center">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="text-xl font-bold text-pasapas-blue">
-            Pas à Pas
-          </Link>
+          <div className="flex-shrink-0">
+            <Link to="/" className="text-xl font-bold text-pasapas-blue">
+              Pas à Pas
+            </Link>
+          </div>
 
-          {/* Desktop menu */}
-          <div className="hidden md:flex items-center space-x-6">
-            <Link to="/" className="text-gray-700 hover:text-pasapas-blue">
-              Accueil
+          {/* Liens centre (desktop) */}
+          <div className="hidden md:flex space-x-8">
+            <Link
+              to="/"
+              className="text-gray-700 hover:text-pasapas-blue transition"
+            >
+              Sneakers
             </Link>
-            <Link to="/products" className="text-gray-700 hover:text-pasapas-blue">
-              Produits
-            </Link>
-            <Link to="/sneakart" className="text-gray-700 hover:text-pasapas-blue">
+            <Link
+              to="/sneakart"
+              className="text-gray-700 hover:text-pasapas-blue transition"
+            >
               SneakArt
             </Link>
           </div>
 
-          {/* Right side */}
+          {/* Actions droite */}
           <div className="hidden md:flex items-center space-x-4">
+            <Link to="/cart">
+              <ShoppingCart className="w-6 h-6 text-gray-700 hover:text-pasapas-blue transition" />
+            </Link>
             {isAuthenticated ? (
               <>
-                <Link to="/dashboard">
-                  <Button className="bg-pasapas-green hover:bg-green-700 text-white">
-                    Dashboard
-                  </Button>
-                </Link>
+                {user?.role === 3 && (
+                  <Link to="/client/dashboard">
+                    <Button className="bg-pasapas-green hover:bg-green-700 text-white">
+                      Espace Client
+                    </Button>
+                  </Link>
+                )}
+                {user?.role === 2 && (
+                  <Link to="/seller/dashboard">
+                    <Button className="bg-pasapas-green hover:bg-green-700 text-white">
+                      Espace Vendeur
+                    </Button>
+                  </Link>
+                )}
+                {user?.role === 1 && (
+                  <Link to="/admin/dashboard">
+                    <Button className="bg-pasapas-green hover:bg-green-700 text-white">
+                      Admin
+                    </Button>
+                  </Link>
+                )}
                 <Button
                   variant="outline"
                   onClick={logout}
@@ -57,10 +79,7 @@ export default function Navbar() {
                   </Button>
                 </Link>
                 <Link to="/register">
-                  <Button
-                    variant="outline"
-                    className="text-pasapas-blue border-pasapas-blue hover:bg-blue-50"
-                  >
+                  <Button className="bg-pasapas-blue hover:bg-blue-700 text-white">
                     Inscription
                   </Button>
                 </Link>
@@ -68,75 +87,56 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile menu button */}
+          {/* Burger menu (mobile) */}
           <div className="md:hidden">
             <button
-              onClick={toggleMenu}
-              className="text-gray-700 focus:outline-none"
+              onClick={() => setIsOpen(!isOpen)}
+              className="text-gray-700 hover:text-pasapas-blue"
             >
-              {menuOpen ? <X size={24} /> : <Menu size={24} />}
+              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile menu dropdown */}
-      {menuOpen && (
-        <div className="md:hidden bg-white border-t shadow-sm">
-          <div className="px-4 py-3 space-y-2">
+      {/* Menu mobile */}
+      {isOpen && (
+        <div className="md:hidden bg-white border-t border-gray-200">
+          <div className="px-4 pt-2 pb-3 space-y-1">
             <Link
               to="/"
-              onClick={toggleMenu}
-              className="block text-gray-700 hover:text-pasapas-blue"
+              onClick={() => setIsOpen(false)}
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-pasapas-blue"
             >
-              Accueil
-            </Link>
-            <Link
-              to="/products"
-              onClick={toggleMenu}
-              className="block text-gray-700 hover:text-pasapas-blue"
-            >
-              Produits
+              Sneakers
             </Link>
             <Link
               to="/sneakart"
-              onClick={toggleMenu}
-              className="block text-gray-700 hover:text-pasapas-blue"
+              onClick={() => setIsOpen(false)}
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-pasapas-blue"
             >
               SneakArt
             </Link>
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to="/dashboard"
-                  onClick={toggleMenu}
-                  className="block text-gray-700 hover:text-pasapas-blue"
-                >
-                  Dashboard
-                </Link>
-                <button
-                  onClick={() => {
-                    logout()
-                    toggleMenu()
-                  }}
-                  className="w-full text-left text-gray-700 hover:text-red-600"
-                >
-                  Déconnexion
-                </button>
-              </>
-            ) : (
+            <Link
+              to="/cart"
+              onClick={() => setIsOpen(false)}
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-pasapas-blue"
+            >
+              Panier
+            </Link>
+            {!isAuthenticated && (
               <>
                 <Link
                   to="/login"
-                  onClick={toggleMenu}
-                  className="block text-gray-700 hover:text-pasapas-blue"
+                  onClick={() => setIsOpen(false)}
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-pasapas-blue"
                 >
                   Connexion
                 </Link>
                 <Link
                   to="/register"
-                  onClick={toggleMenu}
-                  className="block text-gray-700 hover:text-pasapas-blue"
+                  onClick={() => setIsOpen(false)}
+                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-pasapas-blue"
                 >
                   Inscription
                 </Link>
