@@ -10,6 +10,7 @@ import LoginPage from "@/pages/LoginPage"
 import RegisterPage from "@/pages/RegisterPage"
 import ProductDetailPage from "@/pages/ProductDetailPage"
 import CartPage from "@/pages/CartPage"
+import PaymentPage from "@/pages/PaymentPage"
 
 // Dashboards
 import ClientDashboard from "@/pages/client/ClientDashboard"
@@ -41,6 +42,10 @@ export default function AppRoutes() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} /> 
         <Route path="/cart" element={<CartPage />} /> 
+        <Route
+          path="/checkout/payment/:orderId"
+          element={<ProtectedRoute element={<PaymentPage />} />}
+        />
 
         {/* Profile setup after signup */}
         <Route

@@ -1,9 +1,11 @@
+import { useNavigate } from "react-router-dom"
 import { useCart } from "@/context/CartContext"
 import { useAuth } from "@/context/AuthContext"
 
 export default function CartPage() {
   const { cart, removeFromCart, checkout, updateQuantity } = useCart()
   const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
 
   async function handleCheckout() {
     try {
@@ -12,7 +14,10 @@ export default function CartPage() {
         return
       }
       const order = await checkout()
-      alert(`Commande validée avec succès !`)
+      if (!order || !order.id_commande) {
+        throw new Error("Commande introuvable après validation")
+      }
+      navigate(`/checkout/payment/${order.id_commande}`)
     } catch (e) {
       alert("Erreur lors de la validation : " + e.message)
     }

@@ -37,7 +37,6 @@ export function CartProvider({ children }) {
     if (!token) throw new Error("Token manquant. Veuillez vous reconnecter.");
 
     const order = await createOrder(user.id, products);
-    clearCart();
     return order;
   };
 

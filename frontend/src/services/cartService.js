@@ -15,7 +15,7 @@ export async function createOrder(id_client, products) {
     { id_client, products },
     { headers: { ...getAuthHeaders() } }
   );
-  return res.data; // ton backend retourne { id_commande, ... }
+  return res.data?.data; // ton backend retourne { success, data: {...} }
 }
 
 // Récupérer une commande par ID
