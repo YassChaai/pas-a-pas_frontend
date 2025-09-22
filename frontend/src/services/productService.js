@@ -30,3 +30,14 @@ export async function fetchProducts() {
     throw err
   }
 }
+
+export async function fetchProductById(id) {
+  try {
+    const res = await api.get(`/products/${id}`)
+    console.log("Réponse produit backend:", res.data)
+    return res.data.data // ton backend renvoie { success, data }
+  } catch (err) {
+    console.error("Erreur fetchProductById:", err)
+    throw err
+  }
+}

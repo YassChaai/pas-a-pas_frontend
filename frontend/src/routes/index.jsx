@@ -6,6 +6,8 @@ import MainLayout from "@/layouts/MainLayout"
 import SneakersPage from "@/pages/SneakersPage"
 import LoginPage from "@/pages/LoginPage"
 import RegisterPage from "@/pages/RegisterPage"
+import ProductDetailPage from "@/pages/ProductDetailPage"
+import CartPage from "@/pages/CartPage"
 
 // Dashboards
 import ClientDashboard from "@/pages/client/ClientDashboard"
@@ -35,6 +37,8 @@ export default function AppRoutes() {
         <Route path="/" element={<SneakersPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/products/:id" element={<ProductDetailPage />} /> 
+        <Route path="/cart" element={<CartPage />} /> 
 
         {/* Client */}
         <Route

@@ -1,17 +1,22 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { register } from "@/services/authService"
+import { useNavigate, useLocation } from "react-router-dom"
+import { register as registerApi } from "@/services/authService"
 import { useAuth } from "@/context/AuthContext"
+import { jwtDecode } from "jwt-decode"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 export default function RegisterForm() {
-  const [role, setRole] = useState(null) // 2 vendeur, 3 client
-  const [loading, setLoading] = useState(false)
+  const [role, setRole] = useState("")
   const [error, setError] = useState(null)
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
+
+  const from = location.state?.from || null
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -20,59 +25,72 @@ export default function RegisterForm() {
 
     const formData = new FormData(e.target)
     const data = Object.fromEntries(formData.entries())
-    data.role = role
+    data.role = parseInt(role) // 2 = vendeur, 3 = client
 
     try {
-      const res = await register(data)
+      const res = await registerApi(data)
       if (res.token) {
-        login(res.token) // stocke dans AuthContext
+        login(res.token)
+        const decoded = jwtDecode(res.token)
 
-        if (role === 3) navigate("/client/profile")
-        if (role === 2) navigate("/seller/profile")
+        if (from) {
+          navigate(from, { replace: true })
+          return
+        }
+
+        if (decoded.role === 3) navigate("/client/dashboard")
+        if (decoded.role === 2) navigate("/seller/dashboard")
       }
-    } catch (err) {
-      setError(err.response?.data?.message || "Erreur d’inscription")
+    } catch {
+      setError("Impossible de créer le compte")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="space-y-2">
+    <form
+      onSubmit={handleSubmit}
+      className="space-y-4 bg-white p-6 rounded-lg shadow-md"
+    >
+      <h2 className="text-xl font-semibold text-gray-800">Créer un compte</h2>
+
+      <div>
         <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" required />
+        <Input id="email" name="email" type="email" required placeholder="exemple@mail.com" />
       </div>
 
-      <div className="space-y-2">
+      <div>
         <Label htmlFor="password">Mot de passe</Label>
-        <Input id="password" name="password" type="password" required />
+        <Input id="password" name="password" type="password" required placeholder="********" />
       </div>
 
-      <div className="space-y-2">
-        <Label>Vous êtes</Label>
-        <div className="flex justify-center gap-3">
-          <button
-            type="button"
-            onClick={() => setRole(3)}
-            className={`px-5 py-2 rounded-md w-32 ${role === 3 ? "bg-blue-700 text-white" : "bg-gray-100"}`}
-          >
+      <div>
+        <Label>Vous êtes :</Label>
+        <RadioGroup value={role} onValueChange={setRole} className="flex gap-4 mt-2">
+          <label className={`flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer ${
+            role === "3" ? "bg-blue-600 text-white" : "bg-gray-100"
+          }`}>
+            <RadioGroupItem value="3" className="hidden" />
             Client
-          </button>
-          <button
-            type="button"
-            onClick={() => setRole(2)}
-            className={`px-5 py-2 rounded-md w-32 ${role === 2 ? "bg-blue-700 text-white" : "bg-gray-100"}`}
-          >
+          </label>
+          <label className={`flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer ${
+            role === "2" ? "bg-blue-600 text-white" : "bg-gray-100"
+          }`}>
+            <RadioGroupItem value="2" className="hidden" />
             Vendeur
-          </button>
-        </div>
+          </label>
+        </RadioGroup>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-600 text-center">{error}</p>}
 
-      <Button type="submit" disabled={!role || loading} className="w-full bg-blue-700 text-white">
-        {loading ? "Création..." : "Créer mon compte"}
+      <Button
+        type="submit"
+        disabled={loading}
+        className="w-full bg-blue-600 text-white hover:bg-blue-700 transition rounded-md font-medium"
+      >
+        {loading ? "Création..." : "S’inscrire"}
       </Button>
     </form>
   )

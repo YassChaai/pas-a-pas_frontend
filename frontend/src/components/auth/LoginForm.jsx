@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { login as loginApi } from "@/services/authService"
 import { useAuth } from "@/context/AuthContext"
 import { jwtDecode } from "jwt-decode"
@@ -11,6 +11,7 @@ export default function LoginForm() {
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
 
   async function handleSubmit(e) {
@@ -26,9 +27,15 @@ export default function LoginForm() {
       if (res.token) {
         login(res.token)
 
-        const decoded = jwtDecode(res.token)
-        if (decoded.role === 3) navigate("/client/dashboard")
-        if (decoded.role === 2) navigate("/seller/dashboard")
+        // on garde le "from" si c'est un accès protégé (ex: panier)
+        const from = location.state?.from
+        if (from) {
+          navigate(from, { replace: true })
+          return
+        }
+
+        // par défaut → Sneakers
+        navigate("/", { replace: true })
       }
     } catch {
       setError("Email ou mot de passe incorrect")

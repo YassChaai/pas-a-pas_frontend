@@ -1,12 +1,20 @@
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { Menu, X, ShoppingCart } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
+import { useCart } from "@/context/CartContext"
 import { Button } from "@/components/ui/button"
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
   const { isAuthenticated, logout, user } = useAuth()
+  const { cart } = useCart()
+  const location = useLocation()
+
+  const isActive = (path) =>
+    location.pathname === path
+      ? "text-pasapas-blue font-semibold"
+      : "text-gray-700 hover:text-pasapas-blue transition"
 
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -21,24 +29,23 @@ export default function Navbar() {
 
           {/* Liens centre (desktop) */}
           <div className="hidden md:flex space-x-8">
-            <Link
-              to="/"
-              className="text-gray-700 hover:text-pasapas-blue transition"
-            >
+            <Link to="/" className={isActive("/")}>
               Sneakers
             </Link>
-            <Link
-              to="/sneakart"
-              className="text-gray-700 hover:text-pasapas-blue transition"
-            >
+            <Link to="/sneakart" className={isActive("/sneakart")}>
               SneakArt
             </Link>
           </div>
 
           {/* Actions droite */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Link to="/cart">
+          <div className="hidden md:flex items-center space-x-4 relative">
+            <Link to="/cart" className="relative">
               <ShoppingCart className="w-6 h-6 text-gray-700 hover:text-pasapas-blue transition" />
+              {cart && cart.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
+                  {cart.length}
+                </span>
+              )}
             </Link>
             {isAuthenticated ? (
               <>
@@ -106,37 +113,37 @@ export default function Navbar() {
             <Link
               to="/"
               onClick={() => setIsOpen(false)}
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-pasapas-blue"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100"
             >
               Sneakers
             </Link>
             <Link
               to="/sneakart"
               onClick={() => setIsOpen(false)}
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-pasapas-blue"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100"
             >
               SneakArt
             </Link>
             <Link
               to="/cart"
               onClick={() => setIsOpen(false)}
-              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-pasapas-blue"
+              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100"
             >
-              Panier
+              Panier {cart && cart.length > 0 && `(${cart.length})`}
             </Link>
             {!isAuthenticated && (
               <>
                 <Link
                   to="/login"
                   onClick={() => setIsOpen(false)}
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-pasapas-blue"
+                  className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100"
                 >
                   Connexion
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setIsOpen(false)}
-                  className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100 hover:text-pasapas-blue"
+                  className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100"
                 >
                   Inscription
                 </Link>
