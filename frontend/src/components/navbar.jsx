@@ -16,6 +16,17 @@ export default function Navbar() {
       ? "text-pasapas-blue font-semibold"
       : "text-gray-700 hover:text-pasapas-blue transition"
 
+  const mobileLinkClasses = (path) => {
+    const baseClasses = "block px-3 py-2 rounded-md text-base font-medium text-gray-700"
+    if (!path) {
+      return `${baseClasses} hover:bg-pasapas-blue hover:text-white`
+    }
+
+    return location.pathname === path
+      ? `${baseClasses} bg-pasapas-blue text-white`
+      : `${baseClasses} hover:bg-pasapas-blue hover:text-white`
+  }
+
   return (
     <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -39,7 +50,7 @@ export default function Navbar() {
 
           {/* Actions droite */}
           <div className="hidden md:flex items-center space-x-4 relative">
-            <Link to="/cart" className="relative">
+            <Link to="/cart" className="relative mr-">
               <ShoppingCart className="w-6 h-6 text-gray-700 hover:text-pasapas-blue transition" />
               {cart && cart.length > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full">
@@ -113,37 +124,76 @@ export default function Navbar() {
             <Link
               to="/"
               onClick={() => setIsOpen(false)}
-              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100"
+              className={mobileLinkClasses("/")}
             >
               Sneakers
             </Link>
             <Link
               to="/sneakart"
               onClick={() => setIsOpen(false)}
-              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100"
+              className={mobileLinkClasses("/sneakart")}
             >
               SneakArt
             </Link>
             <Link
               to="/cart"
               onClick={() => setIsOpen(false)}
-              className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100"
+              className={mobileLinkClasses("/cart")}
             >
               Panier {cart && cart.length > 0 && `(${cart.length})`}
             </Link>
-            {!isAuthenticated && (
+            {isAuthenticated ? (
+              <>
+                {user?.role === 3 && (
+                  <Link
+                    to="/client/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className={mobileLinkClasses("/client/dashboard")}
+                  >
+                    Espace Client
+                  </Link>
+                )}
+                {user?.role === 2 && (
+                  <Link
+                    to="/seller/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className={mobileLinkClasses("/seller/dashboard")}
+                  >
+                    Espace Vendeur
+                  </Link>
+                )}
+                {user?.role === 1 && (
+                  <Link
+                    to="/admin/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className={mobileLinkClasses("/admin/dashboard")}
+                  >
+                    Admin
+                  </Link>
+                )}
+                <button
+                  onClick={() => {
+                    setIsOpen(false)
+                    logout()
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-gray-100"
+                >
+                  Déconnexion
+                </button>
+              </>
+            ) : (
               <>
                 <Link
                   to="/login"
                   onClick={() => setIsOpen(false)}
-                  className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100"
+                  className={mobileLinkClasses("/login")}
                 >
                   Connexion
                 </Link>
                 <Link
                   to="/register"
                   onClick={() => setIsOpen(false)}
-                  className="block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100"
+                  className={mobileLinkClasses("/register")}
                 >
                   Inscription
                 </Link>

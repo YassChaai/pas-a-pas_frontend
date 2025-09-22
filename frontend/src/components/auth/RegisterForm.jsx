@@ -38,8 +38,8 @@ export default function RegisterForm() {
           return
         }
 
-        if (decoded.role === 3) navigate("/client/dashboard")
-        if (decoded.role === 2) navigate("/seller/dashboard")
+        if (decoded.role === 3) navigate("/client/profile/setup")
+        if (decoded.role === 2) navigate("/seller/profile/setup")
       }
     } catch {
       setError("Impossible de créer le compte")
@@ -49,12 +49,8 @@ export default function RegisterForm() {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 bg-white p-6 rounded-lg shadow-md"
-    >
-      <h2 className="text-xl font-semibold text-gray-800">Créer un compte</h2>
-
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Email */}
       <div>
         <Label htmlFor="email">Email</Label>
         <Input id="email" name="email" type="email" required placeholder="exemple@mail.com" />
@@ -67,7 +63,7 @@ export default function RegisterForm() {
 
       <div>
         <Label>Vous êtes :</Label>
-        <RadioGroup value={role} onValueChange={setRole} className="flex gap-4 mt-2">
+        <RadioGroup value={role} onValueChange={setRole} className="flex justify-center gap-4 mt-2">
           <label className={`flex items-center gap-2 px-4 py-2 border rounded-md cursor-pointer ${
             role === "3" ? "bg-blue-600 text-white" : "bg-gray-100"
           }`}>
@@ -87,7 +83,7 @@ export default function RegisterForm() {
 
       <Button
         type="submit"
-        disabled={loading}
+        disabled={loading || !role}
         className="w-full bg-blue-600 text-white hover:bg-blue-700 transition rounded-md font-medium"
       >
         {loading ? "Création..." : "S’inscrire"}

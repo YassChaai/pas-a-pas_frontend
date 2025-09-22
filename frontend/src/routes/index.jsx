@@ -1,6 +1,8 @@
 import { Routes, Route, Navigate } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
 import MainLayout from "@/layouts/MainLayout"
+import ClientProfileForm from "@/components/client/ClientProfileForm"
+import SellerProfileForm from "@/components/seller/SellerProfileForm"
 
 // Pages publiques
 import SneakersPage from "@/pages/SneakersPage"
@@ -39,6 +41,16 @@ export default function AppRoutes() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} /> 
         <Route path="/cart" element={<CartPage />} /> 
+
+        {/* Profile setup after signup */}
+        <Route
+          path="/client/profile/setup"
+          element={<ProtectedRoute role={3} element={<ClientProfileForm />} />}
+        />
+        <Route
+          path="/seller/profile/setup"
+          element={<ProtectedRoute role={2} element={<SellerProfileForm />} />}
+        />
 
         {/* Client */}
         <Route

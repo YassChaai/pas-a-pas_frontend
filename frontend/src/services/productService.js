@@ -1,11 +1,11 @@
 // src/services/productService.js
 import axios from "axios"
 
-const API_URL = "http://localhost:3000/api/v1/products"
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
 
 export async function fetchProducts() {
   try {
-    const res = await axios.get(API_URL)
+    const res = await axios.get(`${API_URL}/products`)
     console.log("Réponse brute backend:", res.data)
 
     // Ton backend renvoie { success: true, data: [...] }
@@ -33,7 +33,7 @@ export async function fetchProducts() {
 
 export async function fetchProductById(id) {
   try {
-    const res = await api.get(`/products/${id}`)
+    const res = await axios.get(`${API_URL}/products/${id}`)
     console.log("Réponse produit backend:", res.data)
     return res.data.data // ton backend renvoie { success, data }
   } catch (err) {
