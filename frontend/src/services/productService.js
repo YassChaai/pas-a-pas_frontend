@@ -41,3 +41,13 @@ export async function fetchProductById(id) {
     throw err
   }
 }
+
+export async function fetchProductStocks(productId) {
+  try {
+    const res = await axios.get(`${API_URL}/products/${productId}/stocks`)
+    return res.data?.data ?? []
+  } catch (err) {
+    console.error(`Erreur fetchProductStocks (${productId}):`, err)
+    throw err
+  }
+}
