@@ -11,6 +11,8 @@ import RegisterPage from "@/pages/RegisterPage"
 import ProductDetailPage from "@/pages/ProductDetailPage"
 import CartPage from "@/pages/CartPage"
 import PaymentPage from "@/pages/PaymentPage"
+import OrderConfirmationPage from "@/pages/OrderConfirmationPage"
+import PrivacyPolicy from "@/pages/PrivacyPolicy"
 
 // Dashboards
 import ClientDashboard from "@/pages/client/ClientDashboard"
@@ -46,6 +48,11 @@ export default function AppRoutes() {
           path="/checkout/payment/:orderId"
           element={<ProtectedRoute element={<PaymentPage />} />}
         />
+        <Route
+          path="/checkout/confirmation/:orderId"
+          element={<ProtectedRoute element={<OrderConfirmationPage />} />}
+        />
+        <Route path="/politique-de-confidentialite" element={<PrivacyPolicy />} />
 
         {/* Profile setup after signup */}
         <Route

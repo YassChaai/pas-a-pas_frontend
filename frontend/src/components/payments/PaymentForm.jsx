@@ -5,19 +5,21 @@ import { useCart } from "@/context/CartContext"
 const CARD_ELEMENT_OPTIONS = {
   style: {
     base: {
-      color: "#1f2933",
+      color: "#0f172a",
       fontSize: "16px",
-      letterSpacing: "0.025em",
       fontSmoothing: "antialiased",
-      "::placeholder": { color: "#9aa5b1" },
+      letterSpacing: "0.02em",
+      "::placeholder": { color: "#94a3b8" },
     },
     invalid: {
       color: "#ef4444",
     },
   },
+  hidePostalCode: true,
+  disableLink: true,
 }
 
-export default function PaymentForm({ clientSecret }) {
+export default function PaymentForm({ clientSecret, amountLabel, onSuccess }) {
   const stripe = useStripe()
   const elements = useElements()
   const { clearCart } = useCart()
@@ -47,6 +49,10 @@ export default function PaymentForm({ clientSecret }) {
 
       if (paymentIntent?.status === "succeeded") {
         clearCart()
+        if (onSuccess) {
+          onSuccess(paymentIntent)
+          return
+        }
         setMessage("Paiement réussi ! Merci pour votre commande.")
       } else {
         setMessage("Paiement en cours de traitement. Nous vous informerons dès sa confirmation.")
@@ -59,20 +65,41 @@ export default function PaymentForm({ clientSecret }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-w-md mx-auto">
-      <div className="border border-gray-300 rounded-md p-3">
-        <CardElement options={CARD_ELEMENT_OPTIONS} />
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-pasapas-blue/80">
+              Méthode de paiement
+            </p>
+            <h3 className="text-lg font-semibold text-slate-900">Carte bancaire</h3>
+          </div>
+          {amountLabel && (
+            <span className="rounded-full bg-pasapas-blue/10 px-3 py-1 text-xs font-semibold text-pasapas-blue">
+              Total {amountLabel}
+            </span>
+          )}
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 shadow-inner transition focus-within:border-pasapas-blue">
+          <CardElement options={CARD_ELEMENT_OPTIONS} />
+        </div>
       </div>
 
       <button
         type="submit"
         disabled={!stripe || submitting}
-        className="w-full bg-pasapas-blue text-white py-2 rounded-md font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full rounded-xl bg-gradient-to-r from-pasapas-blue to-blue-700 py-3 text-base font-semibold text-white shadow-lg shadow-blue-500/20 transition hover:shadow-blue-500/30 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {submitting ? "Traitement…" : "Payer maintenant"}
+        {submitting ? "Traitement…" : `Payer maintenant${amountLabel ? ` (${amountLabel})` : ""}`}
       </button>
 
-      {message && <p className="text-center text-sm text-gray-700">{message}</p>}
+      {message && (
+        <p
+          className={`text-center text-sm ${message.includes("réussi") ? "text-emerald-600" : "text-amber-600"}`}
+        >
+          {message}
+        </p>
+      )}
     </form>
   )
 }
