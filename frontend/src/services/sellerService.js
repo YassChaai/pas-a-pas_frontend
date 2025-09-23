@@ -59,6 +59,47 @@ export async function updateSellerOrderLineStatus(orderId, lineId, statut_ligne)
   return response.data
 }
 
+export async function updateSellerOrderStatus(orderId, statut) {
+  const response = await axios.patch(
+    `${API_URL}/sellers/orders/${orderId}/status`,
+    { statut },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders(),
+      },
+    },
+  )
+  return response.data
+}
+
+export async function createSellerProduct(payload) {
+  const response = await axios.post(`${API_URL}/products`, payload, {
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+  })
+  return response.data
+}
+
+export async function createSellerProductStock(productId, payload) {
+  const response = await axios.post(`${API_URL}/products/${productId}/stocks`, payload, {
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+  })
+  return response.data
+}
+
+export async function deleteSellerProduct(productId) {
+  const response = await axios.delete(`${API_URL}/products/${productId}`, {
+    headers: authHeaders(),
+  })
+  return response.data
+}
+
 export async function deleteSellerProfile(payload) {
   const response = await axios.delete(`${API_URL}/sellers/profile`, {
     headers: {

@@ -6,6 +6,10 @@ import {
   fetchSellerOrders,
   fetchSellerOrderDetails,
   updateSellerOrderLineStatus,
+  updateSellerOrderStatus,
+  createSellerProduct,
+  createSellerProductStock,
+  deleteSellerProduct,
   deleteSellerProfile,
 } from "@/services/sellerService"
 
@@ -16,10 +20,42 @@ const statutOptions = [
   { label: "Annulée", value: "annulée" },
 ]
 
+const orderStatusOptions = [
+  { label: "Payée", value: "payée" },
+  { label: "En cours", value: "en cours" },
+  { label: "Expédiée", value: "expédiée" },
+  { label: "Finalisée", value: "finalisée" },
+  { label: "Annulée", value: "annulée" },
+]
+
 const DELETE_CONFIRMATION_CODE = "SUPPRIMER MON PROFIL"
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ")
+}
+
+function normalizeStatusText(value) {
+  return (value || "")
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+}
+
+function getOrderStatusBucket(status) {
+  const normalized = normalizeStatusText(status)
+  if (!normalized) return "pending"
+  if (normalized.includes("annul")) return "cancelled"
+  if (
+    normalized.includes("finalis") ||
+    normalized.includes("expedie") ||
+    normalized.includes("livre") ||
+    normalized.includes("pay")
+  ) {
+    return "completed"
+  }
+  return "pending"
 }
 
 function ProfileModal({ profile, onClose, onSave }) {
@@ -208,6 +244,457 @@ function ProfileModal({ profile, onClose, onSave }) {
   )
 }
 
+function NewProductModal({ onClose, onSave, saving = false, error = null }) {
+  const [form, setForm] = useState({
+    brand: "",
+    model: "",
+    description: "",
+    color: "",
+    release_date: "",
+    url: "",
+    images: [null, null, null],
+    price: "",
+    quantity: 1,
+    size: "TU",
+    gender: "Unisexe",
+    original_url: "",
+  })
+  const [localError, setLocalError] = useState(null)
+  const [uploading, setUploading] = useState(false)
+
+  const handleChange = (event) => {
+    const { name, value } = event.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleImageReset = (index) => {
+    setForm((prev) => {
+      const next = [...prev.images]
+      next[index] = null
+      return { ...prev, images: next }
+    })
+  }
+
+  const handleImageFileChange = (index, file) => {
+    if (!file) {
+      handleImageReset(index)
+      return
+    }
+
+    const reader = new FileReader()
+    setUploading(true)
+    reader.onloadend = () => {
+      setForm((prev) => {
+        const next = [...prev.images]
+        next[index] = reader.result
+        return { ...prev, images: next }
+      })
+      setUploading(false)
+    }
+    reader.onerror = () => {
+      setUploading(false)
+      setLocalError("Impossible de lire ce fichier. Réessayez avec une autre image.")
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    const trimmedBrand = form.brand.trim()
+    const trimmedModel = form.model.trim()
+    const firstImage = form.images.find(Boolean)
+
+    if (!trimmedBrand || !trimmedModel) {
+      setLocalError("Merci de renseigner une marque et un modèle.")
+      return
+    }
+
+    if (!firstImage) {
+      setLocalError("Ajoutez au moins une image pour présenter le produit.")
+      return
+    }
+
+    setLocalError(null)
+
+    const payload = {
+      ...form,
+      brand: trimmedBrand,
+      model: trimmedModel,
+      description: form.description.trim(),
+      color: form.color.trim(),
+      release_date: form.release_date,
+      url: form.url.trim(),
+      original_url: form.original_url.trim(),
+      images: form.images.filter(Boolean),
+      price: form.price,
+      quantity: Number(form.quantity) || 0,
+    }
+
+    try {
+      await onSave(payload)
+      onClose()
+    } catch (err) {
+      setLocalError(err.message || "Impossible de créer le produit")
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-3xl overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-2xl backdrop-blur">
+        <div className="border-b border-slate-100 bg-slate-50/70 px-6 py-4">
+          <h3 className="text-lg font-semibold text-slate-900">Ajouter un produit upcyclé</h3>
+          <p className="text-xs text-slate-500">
+            Décrivez votre création (ex : baskets transformées en pot de fleurs). Pensez à ajouter au moins une image.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="grid gap-6 px-6 py-6 md:grid-cols-2">
+          <div className="space-y-4">
+            <label className="block space-y-1 text-sm font-medium text-slate-700">
+              Marque
+              <input
+                type="text"
+                name="brand"
+                value={form.brand}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-inner focus:border-pasapas-blue focus:outline-none"
+                placeholder="ex : Upcycle Lab"
+                required
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm font-medium text-slate-700">
+              Modèle
+              <input
+                type="text"
+                name="model"
+                value={form.model}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-inner focus:border-pasapas-blue focus:outline-none"
+                placeholder="ex : Basket pot de fleurs"
+                required
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm font-medium text-slate-700">
+              Description
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                rows={4}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-inner focus:border-pasapas-blue focus:outline-none"
+                placeholder="Matériaux, démarche écologique, histoire de la pièce..."
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm font-medium text-slate-700">
+              Couleur principale
+              <input
+                type="text"
+                name="color"
+                value={form.color}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-inner focus:border-pasapas-blue focus:outline-none"
+                placeholder="ex : Vert sauge"
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm font-medium text-slate-700">
+              Date de mise en circulation
+              <input
+                type="date"
+                name="release_date"
+                value={form.release_date}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-inner focus:border-pasapas-blue focus:outline-none"
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm font-medium text-slate-700">
+              Lien d’inspiration (facultatif)
+              <input
+                type="url"
+                name="url"
+                value={form.url}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-inner focus:border-pasapas-blue focus:outline-none"
+                placeholder="Page projet, article, etc."
+              />
+            </label>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <p className="text-xs font-medium uppercase tracking-[0.3em] text-slate-400">Images (3 max)</p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[0, 1, 2].map((index) => {
+                  const imageSrc = form.images[index]
+                  return (
+                    <div
+                      key={index}
+                      className="flex h-36 flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white/80 p-3 text-center text-xs text-slate-500"
+                    >
+                      {imageSrc ? (
+                        <>
+                          <img
+                            src={imageSrc}
+                            alt={`Prévisualisation ${index + 1}`}
+                            className="h-20 w-full rounded-xl object-cover shadow-inner"
+                          />
+                          <div className="flex gap-2">
+                            <label className="cursor-pointer rounded-full border border-slate-300 px-3 py-1 text-xs font-medium text-slate-600 hover:border-slate-400">
+                              Changer
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0]
+                                  handleImageFileChange(index, file || null)
+                                  event.target.value = ""
+                                }}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              className="rounded-full border border-rose-200 px-3 py-1 text-xs font-medium text-rose-500 hover:border-rose-300"
+                              onClick={() => handleImageReset(index)}
+                            >
+                              Retirer
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <label className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs font-medium text-slate-500 hover:border-pasapas-blue">
+                          <span>Choisir une image</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0]
+                              handleImageFileChange(index, file || null)
+                              event.target.value = ""
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <p className="text-[11px] text-slate-400">Formats acceptés : JPG, PNG, WebP. Taille conseillée &lt; 2&nbsp;Mo.</p>
+            </div>
+
+            <label className="block space-y-1 text-sm font-medium text-slate-700">
+              Prix (en €)
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                name="price"
+                value={form.price}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-inner focus:border-pasapas-blue focus:outline-none"
+                placeholder="ex : 120"
+                required
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm font-medium text-slate-700">
+              Quantité disponible
+              <input
+                type="number"
+                min="0"
+                step="1"
+                name="quantity"
+                value={form.quantity}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-inner focus:border-pasapas-blue focus:outline-none"
+                required
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm font-medium text-slate-700">
+              Taille (ou format)
+              <input
+                type="text"
+                name="size"
+                value={form.size}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-inner focus:border-pasapas-blue focus:outline-none"
+                placeholder="ex : Taille unique, 42, petit format..."
+              />
+            </label>
+
+            <label className="block space-y-1 text-sm font-medium text-slate-700">
+              Public cible
+              <select
+                name="gender"
+                value={form.gender}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-inner focus:border-pasapas-blue focus:outline-none"
+              >
+                <option value="Unisexe">Unisexe</option>
+                <option value="Homme">Homme</option>
+                <option value="Femme">Femme</option>
+                <option value="Mixte">Mixte</option>
+              </select>
+            </label>
+
+            <label className="block space-y-1 text-sm font-medium text-slate-700">
+              Lien source (facultatif)
+              <input
+                type="url"
+                name="original_url"
+                value={form.original_url}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-inner focus:border-pasapas-blue focus:outline-none"
+                placeholder="Lien vers la paire d'origine, tutoriel, etc."
+              />
+            </label>
+          </div>
+
+          {(localError || error) && (
+            <div className="md:col-span-2 rounded-2xl border border-rose-100 bg-rose-50/70 px-4 py-2 text-sm text-rose-600">
+              {localError || error}
+            </div>
+          )}
+
+          <div className="md:col-span-2 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-400"
+              disabled={saving || uploading}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={saving || uploading}
+              className="rounded-full bg-pasapas-blue px-5 py-2 text-sm font-semibold text-white shadow-md hover:bg-blue-700 disabled:opacity-60"
+            >
+              {saving || uploading ? "Création…" : "Ajouter le produit"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function ProductDetailModal({ product, onClose, onDelete = () => {}, deleteLoading = false, deleteError = null }) {
+  if (!product) return null
+
+  const infoItems = [
+    { label: "Référence", value: product.parent_id },
+    { label: "Couleur", value: product.color },
+    { label: "Prix", value: product.price },
+    { label: "Genre", value: product.gender },
+    { label: "Catégorie", value: product.category },
+    { label: "Date de sortie", value: product.release_date },
+    { label: "État", value: product.condition },
+  ].filter((item) => item.value)
+
+  const stockValue =
+    product.stock ?? product.quantity ?? product.available_quantity ?? product.inventory
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center px-4"
+        onClick={onClose}
+      >
+        <div
+          className="w-full max-w-3xl overflow-hidden rounded-3xl border border-white/70 bg-white/95 shadow-2xl backdrop-blur animate-in fade-in zoom-in-95"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <header className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Produit</p>
+              <h3 className="text-lg font-semibold text-slate-900">
+                {product.brand} · {product.model}
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-500 hover:border-slate-300 hover:text-slate-700"
+            >
+              Fermer
+            </button>
+          </header>
+
+          <div className="grid gap-6 px-6 py-6 md:grid-cols-[220px,1fr]">
+            <div className="flex items-center justify-center">
+              <img
+                src={product.img_1}
+                alt={product.model}
+                className="h-48 w-48 rounded-2xl object-cover shadow-xl"
+              />
+            </div>
+
+            <div className="space-y-4">
+              {product.description && (
+                <div className="rounded-2xl border border-slate-100 bg-slate-50/60 px-4 py-3 text-sm text-slate-600 shadow-inner">
+                  {product.description}
+                </div>
+              )}
+
+              {infoItems.length > 0 && (
+                <dl className="grid gap-4 sm:grid-cols-2">
+                  {infoItems.map((item) => (
+                    <div key={item.label}>
+                      <dt className="text-xs uppercase tracking-[0.3em] text-slate-400">{item.label}</dt>
+                      <dd className="text-sm font-medium text-slate-800">{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+
+              <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+                {product.size && (
+                  <span className="rounded-full border border-slate-200 px-3 py-1">Taille : {product.size}</span>
+                )}
+                {stockValue !== undefined && stockValue !== null && (
+                  <span className="rounded-full border border-slate-200 px-3 py-1">Stock : {stockValue}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4">
+            <div className="text-xs text-slate-400">
+              Créé le {product.created_at ? new Date(product.created_at).toLocaleString("fr-FR") : "—"}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {deleteError && (
+                <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-medium text-rose-600">
+                  {deleteError}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => onDelete(product.parent_id)}
+                disabled={deleteLoading}
+                className="inline-flex items-center gap-2 rounded-full bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-md hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deleteLoading ? "Suppression…" : "Supprimer ce produit"}
+              </button>
+            </div>
+          </footer>
+        </div>
+      </div>
+    </>
+  )
+}
+
 function ProfileCard({ profile, onEdit }) {
   if (!profile) {
     return (
@@ -278,14 +765,24 @@ function ProfileCard({ profile, onEdit }) {
   )
 }
 
-function ProductsSection({ products }) {
+function ProductsSection({ products, onSelectProduct = () => {}, onCreateProduct = () => {} }) {
   return (
     <section className="rounded-3xl border border-white/60 bg-white/95 p-6 shadow-xl backdrop-blur">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
-        <h2 className="text-lg font-semibold text-slate-900">Mes produits en vente</h2>
-        <span className="rounded-full bg-pasapas-blue/10 px-3 py-1 text-xs font-semibold text-pasapas-blue">
-          {products?.length || 0} produit{products?.length > 1 ? "s" : ""}
-        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-lg font-semibold text-slate-900">Mes produits en vente</h2>
+          <span className="rounded-full bg-pasapas-blue/10 px-3 py-1 text-xs font-semibold text-pasapas-blue">
+            {products?.length || 0} produit{products?.length > 1 ? "s" : ""}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onCreateProduct}
+          className="inline-flex items-center gap-2 rounded-full border border-pasapas-blue/30 bg-white px-4 py-2 text-xs font-semibold text-pasapas-blue shadow-sm transition hover:border-pasapas-blue/60 hover:bg-pasapas-blue/10"
+        >
+          <span className="hidden sm:inline">Ajouter un produit</span>
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-pasapas-blue text-white">+</span>
+        </button>
       </div>
 
       {(!products || products.length === 0) && (
@@ -298,7 +795,16 @@ function ProductsSection({ products }) {
         {products?.map((product) => (
           <li
             key={product.parent_id}
-            className="flex gap-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-700 shadow-sm"
+            className="flex cursor-pointer gap-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 text-sm text-slate-700 shadow-sm transition hover:border-pasapas-blue/50 hover:bg-white"
+            onClick={() => onSelectProduct(product)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault()
+                onSelectProduct(product)
+              }
+            }}
           >
             <img
               src={product.img_1}
@@ -311,7 +817,6 @@ function ProductsSection({ products }) {
               </p>
               <p className="text-xs text-slate-500">Référence : {product.parent_id}</p>
               <p className="text-xs text-slate-500">Couleur : {product.color || "—"}</p>
-              <p className="text-xs text-slate-500">Prix conseillé : {product.price || "—"}</p>
             </div>
           </li>
         ))}
@@ -413,8 +918,15 @@ export default function SellerDashboard() {
   const [previewDetails, setPreviewDetails] = useState(null)
   const [detailsCache, setDetailsCache] = useState({})
   const [statusUpdating, setStatusUpdating] = useState(null)
+  const [orderStatusUpdating, setOrderStatusUpdating] = useState(false)
   const [orderFilter, setOrderFilter] = useState("all")
   const [search, setSearch] = useState("")
+  const [productPreview, setProductPreview] = useState(null)
+  const [showCreateProduct, setShowCreateProduct] = useState(false)
+  const [isCreatingProduct, setIsCreatingProduct] = useState(false)
+  const [createProductError, setCreateProductError] = useState(null)
+  const [productDeleteError, setProductDeleteError] = useState(null)
+  const [productDeleteLoading, setProductDeleteLoading] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -433,12 +945,7 @@ export default function SellerDashboard() {
           setProducts(productsRes.data)
         }
         if (ordersRes?.success && ordersRes.data) {
-          // Ne garder que les commandes payées
-          const filtered = ordersRes.data.filter((order) => {
-            const status = (order.statut || "").toLowerCase()
-            return status.includes("pay") || status.includes("finalis") || status.includes("en cours")
-          })
-          setOrders(filtered)
+          setOrders(ordersRes.data)
         }
       } catch (err) {
         setError(err.message || "Impossible de charger vos informations")
@@ -450,6 +957,32 @@ export default function SellerDashboard() {
     load()
   }, [])
 
+  useEffect(() => {
+    if (!productPreview && !showCreateProduct) return
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        if (productPreview) setProductPreview(null)
+        if (showCreateProduct) setShowCreateProduct(false)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [productPreview, showCreateProduct])
+
+  useEffect(() => {
+    if (!showCreateProduct) {
+      setCreateProductError(null)
+    }
+  }, [showCreateProduct])
+
+  useEffect(() => {
+    if (!productPreview) {
+      setProductDeleteError(null)
+    }
+  }, [productPreview])
+
   const handleSaveProfile = async (payload) => {
     const response = await updateSellerProfile(payload)
     if (!response?.success) {
@@ -458,6 +991,136 @@ export default function SellerDashboard() {
     setProfile(response.data)
     setSuccessMessage("Profil vendeur mis à jour ✅")
     setTimeout(() => setSuccessMessage(null), 4000)
+  }
+
+  const handleUpdateOrderStatus = async (orderId, statut) => {
+    if (!orderId || !statut) return
+    if (previewDetails?.statut === statut) return
+    try {
+      setOrderStatusUpdating(true)
+      const response = await updateSellerOrderStatus(orderId, statut)
+      if (!response?.success) {
+        throw new Error(response?.message || "Échec de la mise à jour du statut de commande")
+      }
+
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id_commande === orderId ? { ...order, statut } : order,
+        ),
+      )
+
+      setPreviewDetails((prev) => (prev ? { ...prev, statut } : prev))
+
+      setDetailsCache((prev) =>
+        prev[orderId]
+          ? {
+              ...prev,
+              [orderId]: {
+                ...prev[orderId],
+                statut,
+              },
+            }
+          : prev,
+      )
+
+      setSuccessMessage("Statut de la commande mis à jour ✅")
+      setTimeout(() => setSuccessMessage(null), 4000)
+    } catch (err) {
+      setError(err.message || "Erreur lors de la mise à jour du statut de la commande")
+    } finally {
+      setOrderStatusUpdating(false)
+    }
+  }
+
+  const handleCreateProduct = async (payload) => {
+    try {
+      setIsCreatingProduct(true)
+      setCreateProductError(null)
+
+      const [img1 = "", img2 = "", img3 = ""] = payload.images || []
+
+      const productResponse = await createSellerProduct({
+        url: payload.url || null,
+        brand: payload.brand,
+        model: payload.model,
+        description: payload.description || null,
+        release_date: payload.release_date || null,
+        color: payload.color || null,
+        img_1: img1 || null,
+        img_2: img2 || null,
+        img_3: img3 || null,
+      })
+
+      if (!productResponse?.success || !productResponse.data) {
+        throw new Error(productResponse?.message || "Impossible de créer le produit")
+      }
+
+      const quantity = Number.isFinite(payload.quantity) ? Number(payload.quantity) : 0
+      const priceValue = Number(payload.price)
+      const formattedPrice = Number.isFinite(priceValue) ? `${priceValue.toFixed(2)}€` : "0€"
+      const sanitizedSize = (payload.size || "").trim().slice(0, 10) || "TU"
+      const sanitizedGender = (payload.gender || "").trim().slice(0, 10) || "Unisexe"
+
+      const stockResponse = await createSellerProductStock(productResponse.data.parent_id, {
+        original_url: payload.original_url || payload.url || null,
+        size: sanitizedSize,
+        price: formattedPrice,
+        availability: quantity > 0 ? "Disponible" : "Indisponible",
+        quantity,
+        gender: sanitizedGender,
+      })
+
+      if (!stockResponse?.success || !stockResponse.data) {
+        throw new Error(stockResponse?.message || "Impossible de créer le stock")
+      }
+
+      const enrichedProduct = {
+        ...productResponse.data,
+        stock: stockResponse.data.quantity,
+        size: stockResponse.data.size,
+        gender: stockResponse.data.gender,
+        price: stockResponse.data.price,
+      }
+
+      setProducts((prev) => [enrichedProduct, ...prev])
+      setSuccessMessage("Produit ajouté avec succès ✅")
+      setTimeout(() => setSuccessMessage(null), 4000)
+      return enrichedProduct
+    } catch (err) {
+      const message = err.message || "Erreur lors de la création du produit"
+      setCreateProductError(message)
+      throw err
+    } finally {
+      setIsCreatingProduct(false)
+    }
+  }
+
+  const handleDeleteProduct = async (productId) => {
+    if (!productId || productDeleteLoading) return
+
+    const confirmed = window.confirm(
+      "Voulez-vous supprimer ce produit ? Cette action est irréversible.",
+    )
+    if (!confirmed) return
+
+    try {
+      setProductDeleteLoading(true)
+      setProductDeleteError(null)
+
+      const response = await deleteSellerProduct(productId)
+      if (!response?.success) {
+        throw new Error(response?.message || "Impossible de supprimer le produit")
+      }
+
+      setProducts((prev) => prev.filter((product) => Number(product.parent_id) !== Number(productId)))
+      setProductPreview(null)
+      setSuccessMessage("Produit supprimé ✅")
+      setTimeout(() => setSuccessMessage(null), 4000)
+    } catch (err) {
+      setProductDeleteError(err.message || "Erreur lors de la suppression du produit")
+    } finally {
+      setProductDeleteLoading(false)
+    }
   }
 
   const handleDeleteProfile = async () => {
@@ -489,24 +1152,28 @@ export default function SellerDashboard() {
 
   const totalRevenue = useMemo(() => {
     return orders
-      .filter((order) => (order.statut || "").toLowerCase().includes("pay"))
+      .filter((order) => normalizeStatusText(order.statut).includes("finalise"))
       .reduce((sum, order) => sum + Number(order.montant_total || 0), 0)
   }, [orders])
 
   const filteredOrders = useMemo(() => {
     const query = search.trim().toLowerCase()
+    const normalizedQuery = normalizeStatusText(search)
+
     return orders.filter((order) => {
-      const status = (order.statut || "").toLowerCase()
-      const matchesFilter =
-        orderFilter === "all" ||
-        (orderFilter === "pending" && !status.includes("finalis") && !status.includes("annul")) ||
-        (orderFilter === "completed" && status.includes("finalis")) ||
-        (orderFilter === "cancelled" && status.includes("annul"))
+      const statusBucket = getOrderStatusBucket(order.statut)
+      const matchesFilter = orderFilter === "all" || statusBucket === orderFilter
+
+      const statusNormalized = normalizeStatusText(order.statut)
+      const dateString = order.date_commande
+        ? new Date(order.date_commande).toLocaleDateString("fr-FR").toLowerCase()
+        : ""
 
       const matchesSearch =
         !query ||
-        order.id_commande.toString().includes(query) ||
-        new Date(order.date_commande).toLocaleDateString("fr-FR").includes(query)
+        order.id_commande?.toString().includes(query) ||
+        dateString.includes(query) ||
+        (normalizedQuery && statusNormalized.includes(normalizedQuery))
 
       return matchesFilter && matchesSearch
     })
@@ -653,7 +1320,11 @@ export default function SellerDashboard() {
           </div>
         </div>
 
-        <ProductsSection products={products} />
+        <ProductsSection
+          products={products}
+          onSelectProduct={setProductPreview}
+          onCreateProduct={() => setShowCreateProduct(true)}
+        />
 
         <section className="rounded-3xl border border-white/60 bg-white/95 p-6 shadow-xl backdrop-blur">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -728,6 +1399,28 @@ export default function SellerDashboard() {
           </div>
         </div>
 
+        {showCreateProduct && (
+          <NewProductModal
+            onClose={() => {
+              setShowCreateProduct(false)
+              setCreateProductError(null)
+            }}
+            onSave={handleCreateProduct}
+            saving={isCreatingProduct}
+            error={createProductError}
+          />
+        )}
+
+        {productPreview && (
+          <ProductDetailModal
+            product={productPreview}
+            onClose={() => setProductPreview(null)}
+            onDelete={handleDeleteProduct}
+            deleteLoading={productDeleteLoading}
+            deleteError={productDeleteError}
+          />
+        )}
+
         {previewOrderId && (
           <>
             <div
@@ -768,6 +1461,25 @@ export default function SellerDashboard() {
                 )}
                 {!previewLoading && previewDetails && (
                   <div className="mt-4 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 px-4 py-4">
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-[0.3em] text-slate-400">Statut de la commande</p>
+                        <p className="text-sm font-semibold text-slate-900">{previewDetails.statut || "—"}</p>
+                      </div>
+                      <select
+                        value={previewDetails.statut || ""}
+                        onChange={(event) => handleUpdateOrderStatus(previewOrderId, event.target.value)}
+                        disabled={orderStatusUpdating}
+                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600 shadow-inner focus:border-pasapas-blue focus:outline-none disabled:cursor-not-allowed"
+                      >
+                        {orderStatusOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     {previewDetails.mes_lignes?.length ? (
                       <ul className="space-y-3">
                         {previewDetails.mes_lignes.map((line) => (

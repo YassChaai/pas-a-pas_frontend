@@ -4,9 +4,9 @@ import { fetchProducts, fetchProductStocks } from "@/services/productService"
 import ProductCard from "@/components/products/ProductCard"
 import FiltersPanel from "@/components/products/FiltersPanel"
 
-const EXCLUDED_BRAND = "Sneak'Art"
+const SNEAKART_BRAND = "Sneak'Art"
 
-export default function SneakersPage() {
+export default function SneakArtPage() {
   const [allProducts, setAllProducts] = useState([])
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -14,7 +14,7 @@ export default function SneakersPage() {
   const [page, setPage] = useState(1)
   const [searchParams] = useSearchParams()
   const [filters, setFilters] = useState({
-    brand: "all",
+    brand: SNEAKART_BRAND,
     color: "all",
     size: "all",
     gender: "all",
@@ -25,8 +25,12 @@ export default function SneakersPage() {
   const limit = 20
   const searchTerm = (searchParams.get("search") || "").trim().toLowerCase()
 
+  const filteredByBrand = useMemo(() => {
+    return allProducts.filter((product) => product.brand === SNEAKART_BRAND)
+  }, [allProducts])
+
   const filterOptions = useMemo(() => {
-    if (allProducts.length === 0) {
+    if (filteredByBrand.length === 0) {
       return {
         brands: [],
         colors: [],
@@ -36,12 +40,10 @@ export default function SneakersPage() {
       }
     }
 
-    const brands = collectBrands(allProducts)
+    const brandsList = collectBrands(filteredByBrand)
+    const brands = brandsList.length > 0 ? brandsList : [SNEAKART_BRAND]
 
-    const brandFilteredProducts =
-      filters.brand === "all"
-        ? allProducts
-        : allProducts.filter((product) => product.brand === filters.brand)
+    const brandFilteredProducts = filteredByBrand
 
     const colorOptionsSource = brandFilteredProducts
     const colors = collectColors(colorOptionsSource)
@@ -89,7 +91,7 @@ export default function SneakersPage() {
         hasValues: hasPriceValues,
       },
     }
-  }, [allProducts, filters.brand, filters.color, filters.size, filters.gender])
+  }, [filteredByBrand, filters.color, filters.size, filters.gender])
 
   useEffect(() => {
     if (!filterOptions.priceRange) return
@@ -154,15 +156,15 @@ export default function SneakersPage() {
   }, [filters.gender, filterOptions.genders])
 
   const searchFilteredProducts = useMemo(() => {
-    if (!searchTerm) return allProducts
+    if (!searchTerm) return filteredByBrand
 
-    return allProducts.filter((product) => {
+    return filteredByBrand.filter((product) => {
       const brand = product.brand?.toLowerCase() || ""
       const model = product.model?.toLowerCase() || ""
 
       return brand.includes(searchTerm) || model.includes(searchTerm)
     })
-  }, [allProducts, searchTerm])
+  }, [filteredByBrand, searchTerm])
 
   useEffect(() => {
     async function loadProducts() {
@@ -190,12 +192,7 @@ export default function SneakersPage() {
           }),
         )
 
-        const sneakersOnly = productsWithStocks.filter((product) => {
-          const brand = (product.brand || "").trim()
-          return brand !== EXCLUDED_BRAND
-        })
-
-        setAllProducts(sneakersOnly)
+        setAllProducts(productsWithStocks)
       } catch (err) {
         console.error(err)
         setError("Impossible de charger les produits.")
@@ -208,15 +205,7 @@ export default function SneakersPage() {
 
   useEffect(() => {
     setPage(1)
-  }, [
-    searchTerm,
-    filters.brand,
-    filters.color,
-    filters.size,
-    filters.gender,
-    filters.priceMin,
-    filters.priceMax,
-  ])
+  }, [searchTerm, filters.color, filters.size, filters.gender, filters.priceMin, filters.priceMax])
 
   const priceRange = filterOptions.priceRange ?? { min: 0, max: 0 }
   const priceBounds = {
@@ -224,10 +213,31 @@ export default function SneakersPage() {
     max: filters.priceMax ?? priceRange.max ?? priceRange.min ?? 0,
   }
 
+  const handleFiltersChange = (nextFilters) => {
+    setFilters({
+      ...nextFilters,
+      brand: SNEAKART_BRAND,
+    })
+  }
+
+  const handleResetFilters = () => {
+    setFilters({
+      brand: SNEAKART_BRAND,
+      color: "all",
+      size: "all",
+      gender: "all",
+      priceMin: filterOptions.priceRange?.hasValues
+        ? filterOptions.priceRange.min
+        : undefined,
+      priceMax: filterOptions.priceRange?.hasValues
+        ? filterOptions.priceRange.max
+        : undefined,
+    })
+  }
+
   const fullyFilteredProducts = useMemo(() => {
     return searchFilteredProducts.filter((product) => {
-      const matchesBrand =
-        filters.brand === "all" || product.brand === filters.brand
+      const matchesBrand = product.brand === SNEAKART_BRAND
 
       const productColors = new Set()
       if (product.color) {
@@ -312,16 +322,16 @@ export default function SneakersPage() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-extrabold uppercase tracking-[0.2em] text-pasapas-blue inline-block relative after:content-[''] after:block after:h-1 after:w-16 after:bg-pasapas-green after:mt-4 after:mx-auto">
-          Sneakers
+          Sneak'Art
         </h1>
         {searchTerm ? (
           <p className="mt-4 text-gray-600">
-            Résultats pour "{searchParams.get("search")?.trim()}" — {resultsCount} modèle
-            {resultsCount > 1 ? "s" : ""}
+            Résultats pour "{searchParams.get("search")?.trim()}" — {resultsCount} création
+            {resultsCount > 1 ? "s" : ""} Sneak'Art
           </p>
         ) : (
           <p className="mt-4 text-gray-600">
-            Explorez {resultsCount} modèle{resultsCount > 1 ? "s" : ""} sélectionné{resultsCount > 1 ? "s" : ""} par Pas à Pas.
+            Explorez {resultsCount} création{resultsCount > 1 ? "s" : ""} Sneak'Art upcyclée{resultsCount > 1 ? "s" : ""}.
           </p>
         )}
       </div>
@@ -329,21 +339,8 @@ export default function SneakersPage() {
       <FiltersPanel
         options={filterOptions}
         filters={filters}
-        onFiltersChange={setFilters}
-        onReset={() =>
-          setFilters({
-            brand: "all",
-            color: "all",
-            size: "all",
-            gender: "all",
-            priceMin: filterOptions.priceRange?.hasValues
-              ? filterOptions.priceRange.min
-              : undefined,
-            priceMax: filterOptions.priceRange?.hasValues
-              ? filterOptions.priceRange.max
-              : undefined,
-          })
-        }
+        onFiltersChange={handleFiltersChange}
+        onReset={handleResetFilters}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

@@ -43,10 +43,14 @@ export default function Navbar() {
     setIsOpen(false)
 
     const query = searchValue.trim()
+    const currentListPath = location.pathname.startsWith("/sneakart")
+      ? "/sneakart"
+      : "/"
+
     if (query) {
-      navigate(`/?search=${encodeURIComponent(query)}`)
+      navigate(`${currentListPath}?search=${encodeURIComponent(query)}`)
     } else {
-      navigate("/")
+      navigate(currentListPath)
     }
   }
 
@@ -101,7 +105,10 @@ export default function Navbar() {
                 onClick={() => {
                   setIsSearchOpen((prev) => !prev)
                   if (isSearchOpen && !searchValue) {
-                    navigate("/")
+                    const currentListPath = location.pathname.startsWith("/sneakart")
+                      ? "/sneakart"
+                      : "/"
+                    navigate(currentListPath)
                   }
                 }}
                 className="p-2 text-gray-700 hover:text-pasapas-blue"
