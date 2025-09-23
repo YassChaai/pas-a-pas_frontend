@@ -6,6 +6,7 @@ import {
   fetchSellerOrders,
   fetchSellerOrderDetails,
   updateSellerOrderLineStatus,
+  deleteSellerProfile,
 } from "@/services/sellerService"
 
 const statutOptions = [
@@ -14,6 +15,8 @@ const statutOptions = [
   { label: "Expédiée", value: "expédiée" },
   { label: "Annulée", value: "annulée" },
 ]
+
+const DELETE_CONFIRMATION_CODE = "SUPPRIMER MON PROFIL"
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ")
@@ -402,6 +405,8 @@ export default function SellerDashboard() {
   const [error, setError] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [successMessage, setSuccessMessage] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [previewOrderId, setPreviewOrderId] = useState(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState(null)
@@ -453,6 +458,33 @@ export default function SellerDashboard() {
     setProfile(response.data)
     setSuccessMessage("Profil vendeur mis à jour ✅")
     setTimeout(() => setSuccessMessage(null), 4000)
+  }
+
+  const handleDeleteProfile = async () => {
+    try {
+      setIsDeleting(true)
+      const response = await deleteSellerProfile({
+        confirmDeletion: true,
+        confirmationCode: DELETE_CONFIRMATION_CODE,
+      })
+
+      if (!response?.success) {
+        throw new Error(response?.message || "Échec de la suppression du profil")
+      }
+
+      setSuccessMessage("Compte vendeur supprimé. Déconnexion en cours…")
+      setTimeout(() => {
+        if (typeof window !== "undefined") {
+          window.localStorage.removeItem("token")
+          window.location.href = "/"
+        }
+      }, 1500)
+    } catch (err) {
+      setError(err.message || "Erreur lors de la suppression du profil")
+    } finally {
+      setIsDeleting(false)
+      setConfirmDelete(false)
+    }
   }
 
   const totalRevenue = useMemo(() => {
@@ -658,6 +690,43 @@ export default function SellerDashboard() {
             activeOrderId={previewOrderId}
           />
         </section>
+
+        <div className="rounded-3xl border border-rose-100 bg-rose-50/70 p-6 text-center text-sm text-rose-600 shadow-inner">
+          <p className="font-semibold">Supprimer mon profil vendeur</p>
+          <p className="mt-1 text-rose-500">
+            Cette action supprimera définitivement vos informations vendeur, vos produits associés et votre accès à cet espace.
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
+            {confirmDelete ? (
+              <>
+                <button
+                  type="button"
+                  onClick={handleDeleteProfile}
+                  disabled={isDeleting}
+                  className="rounded-full bg-rose-600 px-5 py-2 text-sm font-semibold text-white shadow-md hover:bg-rose-700 disabled:opacity-60"
+                >
+                  {isDeleting ? "Suppression…" : "Confirmer la suppression"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="rounded-full border border-rose-200 px-4 py-2 text-sm font-medium text-rose-500 hover:border-rose-300"
+                  disabled={isDeleting}
+                >
+                  Annuler
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-rose-600 shadow-sm hover:bg-rose-100"
+              >
+                Supprimer mon profil
+              </button>
+            )}
+          </div>
+        </div>
 
         {previewOrderId && (
           <>

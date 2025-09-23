@@ -58,3 +58,14 @@ export async function updateSellerOrderLineStatus(orderId, lineId, statut_ligne)
   )
   return response.data
 }
+
+export async function deleteSellerProfile(payload) {
+  const response = await axios.delete(`${API_URL}/sellers/profile`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(),
+    },
+    data: payload,
+  })
+  return response.data
+}
